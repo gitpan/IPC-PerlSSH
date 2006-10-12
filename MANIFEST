@@ -1,0 +1,8 @@
+lib/IPC/PerlSSH.pm
+MANIFEST
+Makefile.PL
+t/01require.t
+t/02functest.t
+t/03perltest.t
+t/04sshtest.t
+META.yml                                 Module meta-data (added by MakeMaker)
