@@ -24,7 +24,7 @@ use IPC::Open2;
 use Carp;
 
 my $VERSION;
-$VERSION = "0.02";
+$VERSION = "0.03";
 
 =head1 NAME
 
@@ -226,6 +226,10 @@ Connecting to a named host.
 
  Host => $hostname
 
+Optionally passing in the path to the perl binary in the remote host
+
+ Perl => $perl
+
 =item *
 
 Running a specified command, connecting to its standard input and output.
@@ -280,7 +284,7 @@ sub new
          my $host = $opts{Host} or
             carp __PACKAGE__."->new() requires a Host, a Command or a Readfunc/Writefunc pair";
 
-         @command = ( "ssh", $host, "perl" );
+         @command = ( "ssh", $host, $opts{Perl} || "perl" );
       }
       
       my ( $readpipe, $writepipe );
@@ -331,6 +335,10 @@ C<eval> in the remote host, in list context. If this method is called in
 scalar context, then only the first element of the returned list is returned.
 Only string scalar values are supported in either the arguments or the return
 values; no deeply-nested structures can be passed.
+
+To pass or return a more complex structure, consider using a module such as
+L<Storable>, which can serialise the structure into a plain string, to be
+deserialised on the remote end.
 
 If the remote code threw an exception, then this function propagates it as a
 plain string.
