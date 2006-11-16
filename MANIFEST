@@ -1,6 +1,7 @@
 lib/IPC/PerlSSH.pm
-MANIFEST
 Makefile.PL
+MANIFEST
+MANIFEST.SKIP
 t/01require.t
 t/02functest.t
 t/03perltest.t

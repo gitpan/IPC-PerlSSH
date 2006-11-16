@@ -2,24 +2,38 @@
 
 use strict;
 
-use Test::More tests => 6;
+use Test::More tests => 7;
 
 use IPC::PerlSSH;
 
+$SIG{ALRM} = sub {
+   die "Alarm timeout exceeded\n";
+};
+
+alarm( 5 );
+
 my $ips = IPC::PerlSSH->new( Command => "perl" );
 ok( defined $ips, "Constructor" );
+
+alarm( 5 );
 
 # Test basic eval / return
 my $result = $ips->eval( '( 10 + 30 ) / 2' );
 is( $result, 20, "Scalar eval return" );
 
+alarm( 5 );
+
 # Test list return
 my @letters = $ips->eval( 'split( m//, "Hello, world!" )' );
 is_deeply( \@letters, [qw( H e l l o ), ",", " ", qw( w o r l d ! )], "List eval return" );
 
+alarm( 5 );
+
 # Test argument passing
 $result = $ips->eval( 'join( ":", @_ )', qw( some values here ) );
 is( $result, "some:values:here", "Scalar eval argument passing" );
+
+alarm( 5 );
 
 # Test stored procedures
 $ips->store( 'add', 'my $t = 0; 
@@ -31,7 +45,16 @@ $ips->store( 'add', 'my $t = 0;
 my $total = $ips->call( 'add', 10, 20, 30, 40, 50 );
 is( $total, 150, "Stored procedure storing/invokation" );
 
+alarm( 5 );
+
 # Test caller binding
 $ips->bind( 'dosomething', 'return "My string is $_[0]"' );
 $result = dosomething( "hello" );
 is( $result, "My string is hello", "Caller bound stored procedure" );
+
+alarm( 5 );
+
+# Test with $/ set to undef
+$/ = undef;
+$total = $ips->call( 'add', 1, 2 );
+is( $total, 3, "Copes with nondefault \$/" );

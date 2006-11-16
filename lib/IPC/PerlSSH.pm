@@ -23,8 +23,7 @@ use IPC::Open2;
 
 use Carp;
 
-my $VERSION;
-$VERSION = "0.03";
+our $VERSION = "0.04";
 
 =head1 NAME
 
@@ -75,6 +74,8 @@ my $COMMON_PERL = <<'EOP';
 sub read_operation
 {
    my ( $readfunc ) = @_;
+
+   local $/ = "\n";
 
    $readfunc->( my $operation, undef );
    defined $operation or die "Expected operation\n";
