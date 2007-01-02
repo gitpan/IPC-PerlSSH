@@ -1,12 +1,14 @@
-# http://module-build.sourceforge.net/META-spec.html
-#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
-name:         IPC-PerlSSH
-version:      0.04
-version_from: lib/IPC/PerlSSH.pm
-installdirs:  site
+---
+name: IPC-PerlSSH
+version: 0.05
+author:
+  - 'Paul Evans E<lt>leonerd@leonerd.org.ukE<gt>'
+abstract: a class for executing remote perl code over an SSH link
+license: perl
 requires:
-    IPC::Open2:                    0
-    Test::More:                    0
-
-distribution_type: module
-generated_by: ExtUtils::MakeMaker version 6.30_01
+  IPC::Open2: 0
+provides:
+  IPC::PerlSSH:
+    file: lib/IPC/PerlSSH.pm
+    version: 0.05
+generated_by: Module::Build version 0.26

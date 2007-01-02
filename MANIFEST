@@ -1,9 +1,8 @@
+Build.PL
 lib/IPC/PerlSSH.pm
-Makefile.PL
-MANIFEST
-MANIFEST.SKIP
+MANIFEST			This list of files
 t/01require.t
 t/02functest.t
 t/03perltest.t
 t/04sshtest.t
-META.yml                                 Module meta-data (added by MakeMaker)
+META.yml
