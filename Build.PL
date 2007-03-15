@@ -10,7 +10,11 @@ my $build = Module::Build->new
    requires => {
                  'IPC::Open2' => 0,
                },
+   build_requires => {
+                        'Test::More' => 0,
+                     },
    license => 'perl',
+   create_makefile_pl => 'traditional',
   );
   
 $build->create_build_script;

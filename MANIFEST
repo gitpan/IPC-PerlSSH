@@ -1,8 +1,9 @@
 Build.PL
 lib/IPC/PerlSSH.pm
+Makefile.PL
 MANIFEST			This list of files
+META.yml
 t/01require.t
 t/02functest.t
 t/03perltest.t
 t/04sshtest.t
-META.yml
