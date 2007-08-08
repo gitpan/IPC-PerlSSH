@@ -1,6 +1,6 @@
 ---
 name: IPC-PerlSSH
-version: 0.06
+version: 0.07
 author:
   - 'Paul Evans E<lt>leonerd@leonerd.org.ukE<gt>'
 abstract: a class for executing remote perl code over an SSH link
@@ -12,5 +12,5 @@ build_requires:
 provides:
   IPC::PerlSSH:
     file: lib/IPC/PerlSSH.pm
-    version: 0.06
+    version: 0.07
 generated_by: Module::Build version 0.26

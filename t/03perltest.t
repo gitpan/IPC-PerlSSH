@@ -2,7 +2,7 @@
 
 use strict;
 
-use Test::More tests => 7;
+use Test::More tests => 9;
 
 use IPC::PerlSSH;
 
@@ -58,3 +58,15 @@ alarm( 5 );
 $/ = undef;
 $total = $ips->call( 'add', 1, 2 );
 is( $total, 3, "Copes with nondefault \$/" );
+
+# Test with an arrayref for Command
+$ips = IPC::PerlSSH->new( Command => [ "perl", "-w" ] );
+ok( defined $ips, "Constructor with Command ARRAY" );
+
+alarm( 5 );
+
+# Test basic eval / return
+$result = $ips->eval( '( 10 + 30 ) / 2' );
+is( $result, 20, "Scalar eval return with Command ARRAY" );
+
+alarm( 0 );

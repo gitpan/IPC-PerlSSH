@@ -12,7 +12,7 @@ use IPC::Open2;
 
 use Carp;
 
-our $VERSION = "0.06";
+our $VERSION = "0.07";
 
 =head1 NAME
 
@@ -220,6 +220,10 @@ Optionally passing in the path to the perl binary in the remote host
 
  Perl => $perl
 
+Optionally passing in an alternative username
+
+ User => $user
+
 =item *
 
 Running a specified command, connecting to its standard input and output.
@@ -268,11 +272,13 @@ sub new
       my @command;
       if( exists $opts{Command} ) {
          my $c = $opts{Command};
-         @command = ref($c) && $c->isa("ARRAY") ? @$c : ( "$c" );
+         @command = ref($c) && UNIVERSAL::isa( $c, "ARRAY" ) ? @$c : ( "$c" );
       }
       else {
          my $host = $opts{Host} or
             carp __PACKAGE__."->new() requires a Host, a Command or a Readfunc/Writefunc pair";
+
+         defined $opts{User} and $host = "$opts{User}\@$host";
 
          @command = ( "ssh", $host, $opts{Perl} || "perl" );
       }
