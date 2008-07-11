@@ -1,5 +1,9 @@
 Build.PL
+Changes
 lib/IPC/PerlSSH.pm
+lib/IPC/PerlSSH/Base.pm
+lib/IPC/PerlSSH/Library.pm
+lib/IPC/PerlSSH/Library/FS.pm
 Makefile.PL
 MANIFEST			This list of files
 META.yml
@@ -7,3 +11,7 @@ t/01require.t
 t/02functest.t
 t/03perltest.t
 t/04sshtest.t
+t/10library-load.t
+t/20library-FS.t
+t/Error.pm
+t/Math.pm

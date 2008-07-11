@@ -1,18 +1,19 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2006,2007 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2006-2008 -- leonerd@leonerd.org.uk
 
 package IPC::PerlSSH;
 
 use strict;
 
-use Symbol;
+use base qw( IPC::PerlSSH::Base );
+
 use IPC::Open2;
 
 use Carp;
 
-our $VERSION = "0.07";
+our $VERSION = "0.08";
 
 =head1 NAME
 
@@ -56,149 +57,6 @@ binary on the remote host can use this module.
 
 =cut
 
-# We have a "shared library" of common functions between this end and the
-# remote end
-
-my $COMMON_PERL = <<'EOP';
-sub read_operation
-{
-   my ( $readfunc ) = @_;
-
-   local $/ = "\n";
-
-   $readfunc->( my $operation, undef );
-   defined $operation or die "Expected operation\n";
-   chomp $operation;
-
-   $readfunc->( my $numargs, undef );
-   defined $numargs or die "Expected number of arguments\n";
-   chomp $numargs;
-
-   my @args;
-   while( $numargs ) {
-      $readfunc->( my $arglen, undef );
-      defined $arglen or die "Expected length of argument\n";
-      chomp $arglen;
-
-      my $arg = "";
-      while( $arglen ) {
-         my $buffer;
-         my $n = $readfunc->( $buffer, $arglen );
-         die "read() returned $!\n" unless( defined $n );
-         $arg .= $buffer;
-         $arglen -= $n;
-      }
-
-      push @args, $arg;
-      $numargs--;
-   }
-
-   return ( $operation, @args );
-}
-
-sub send_operation
-{
-   my ( $writefunc, $operation, @args ) = @_;
-
-   # Buffer this for speed - this makes a big difference
-   my $buffer = "";
-
-   $buffer .= "$operation\n";
-   $buffer .= scalar( @args ) . "\n";
-
-   foreach my $arg ( @args ) {
-      $buffer .= length( $arg ) . "\n" . "$arg";
-   }
-
-   $writefunc->( $buffer );
-}
-
-EOP
-
-# And now for the main loop of the remote firmware
-my $REMOTE_PERL = <<'EOP';
-$| = 1;
-
-my %stored_procedures;
-
-my $readfunc = sub {
-   if( defined $_[1] ) {
-      read( STDIN, $_[0], $_[1] );
-   }
-   else {
-      $_[0] = <STDIN>;
-      length $_[0];
-   }
-};
-
-my $writefunc = sub {
-   print STDOUT $_[0];
-};
-
-while( 1 ) {
-   my ( $operation, @args ) = read_operation( $readfunc );
-
-   if( $operation eq "QUIT" ) {
-      # Immediate controlled shutdown
-      exit( 0 );
-   }
-
-   if( $operation eq "EVAL" ) {
-      my $code = shift @args;
-
-      my $subref = eval "sub { $code }";
-      if( $@ ) {
-         send_operation( $writefunc, "DIED", "While compiling code: $@" );
-         next;
-      }
-
-      my @results = eval { $subref->( @args ) };
-      if( $@ ) {
-         send_operation( $writefunc, "DIED", "While running code: $@" );
-         next;
-      }
-
-      send_operation( $writefunc, "RETURNED", @results );
-      next;
-   }
-   
-   if( $operation eq "STORE" ) {
-      my ( $name, $code ) = @args;
-
-      my $subref = eval "sub { $code }";
-      if( $@ ) {
-         send_operation( $writefunc, "DIED", "While compiling code: $@" );
-         next;
-      }
-
-      $stored_procedures{$name} = $subref;
-      send_operation( $writefunc, "OK" );
-      next;
-   }
-
-   if( $operation eq "CALL" ) {
-      my $name = shift @args;
-
-      my $subref = $stored_procedures{$name};
-      if( !defined $subref ) {
-         send_operation( $writefunc, "DIED", "No such stored procedure '$name'" );
-         next;
-      }
-
-      my @results = eval { $subref->( @args ) };
-      if( $@ ) {
-         send_operation( $writefunc, "DIED", "While running code: $@" );
-         next;
-      }
-
-      send_operation( $writefunc, "RETURNED", @results );
-      next;
-   }
-
-   send_operation( $writefunc, "DIED", "Unknown operation $operation" );
-}
-EOP
-
 =head1 FUNCTIONS
 
 =cut
@@ -224,6 +82,10 @@ Optionally passing in an alternative username
 
  User => $user
 
+Optionally specifying a different path to the F<ssh> binary
+
+ SshPath => $path
+
 =item *
 
 Running a specified command, connecting to its standard input and output.
@@ -244,10 +106,9 @@ Usually this form won't be used in practice; it largely exists to assist the
 test scripts. But since it works, it is included in the interface in case the
 earlier alternatives are not suitable.
 
-In this case, the write functions are called as
+The functions are called as
 
- read( my $buffer, undef );    # read a line, like <$handle>
- read( my $buffer, $len );     # read a fixed-length buffer
+ read( my $buffer, $len );
 
  write( $buffer );
 
@@ -263,62 +124,60 @@ sub new
    my $class = shift;
    my %opts = @_;
 
+   my $self = bless {
+      readbuff => "",
+   }, $class;
 
    my ( $readfunc, $writefunc ) = ( $opts{Readfunc}, $opts{Writefunc} );
 
    my $pid = $opts{Pid};
 
    if( !defined $readfunc || !defined $writefunc ) {
-      my @command;
-      if( exists $opts{Command} ) {
-         my $c = $opts{Command};
-         @command = ref($c) && UNIVERSAL::isa( $c, "ARRAY" ) ? @$c : ( "$c" );
-      }
-      else {
-         my $host = $opts{Host} or
-            carp __PACKAGE__."->new() requires a Host, a Command or a Readfunc/Writefunc pair";
+      my @command = $self->build_command( %opts );
 
-         defined $opts{User} and $host = "$opts{User}\@$host";
-
-         @command = ( "ssh", $host, $opts{Perl} || "perl" );
-      }
-      
       my ( $readpipe, $writepipe );
       $pid = open2( $readpipe, $writepipe, @command );
 
       $readfunc = sub {
-         if( defined $_[1] ) {
-            read( $readpipe, $_[0], $_[1] );
-         }
-         else {
-            $_[0] = <$readpipe>;
-            length( $_[0] );
-         }
+         sysread( $readpipe, $_[0], $_[1] );
       };
 
       $writefunc = sub {
-         print $writepipe $_[0];
+         syswrite( $writepipe, $_[0] );
       };
    }
 
-   # Now stream it the "firmware"
-   $writefunc->( <<EOF );
-use strict;
+   $self->{pid}       = $pid;
+   $self->{readfunc}  = $readfunc;
+   $self->{writefunc} = $writefunc;
 
-$COMMON_PERL
+   $self->send_firmware;
 
-$REMOTE_PERL
+   return $self;
+}
 
-__END__
-EOF
+sub write
+{
+   my $self = shift;
+   my ( $data ) = @_;
 
-   my $self = {
-      readfunc  => $readfunc,
-      writefunc => $writefunc,
-      pid       => $pid,
-   };
+   $self->{writefunc}->( $data );
+}
 
-   return bless $self, $class;
+sub read_message
+{
+   my $self = shift;
+
+   my ( $message, @args );
+
+   while( !defined $message ) {
+      my $b;
+      $self->{readfunc}->( $b, 8192 ) or die "Readfunc failed - $!";
+      $self->{readbuff} .= $b;
+      ( $message, @args ) = $self->parse_message( $self->{readbuff} );
+   }
+
+   return ( $message, @args );
 }
 
 =head2 @result = $ips->eval( $code, @args )
@@ -346,9 +205,9 @@ sub eval
    my $self = shift;
    my ( $code, @args ) = @_;
 
-   send_operation( $self->{writefunc}, "EVAL", $code, @args );
+   $self->write_message( "EVAL", $code, @args );
 
-   my ( $ret, @retargs ) = read_operation( $self->{readfunc} );
+   my ( $ret, @retargs ) = $self->read_message;
 
    # If the caller didn't want an array and we received more than one result
    # from the far end; we'll just have to throw it away...
@@ -376,9 +235,9 @@ sub store
    my $self = shift;
    my ( $name, $code ) = @_;
 
-   send_operation( $self->{writefunc}, "STORE", $name, $code );
+   $self->write_message( "STORE", $name, $code );
 
-   my ( $ret, @retargs ) = read_operation( $self->{readfunc} );
+   my ( $ret, @retargs ) = $self->read_message;
 
    return if( $ret eq "OK" );
 
@@ -425,9 +284,9 @@ sub call
    my $self = shift;
    my ( $name, @args ) = @_;
 
-   send_operation( $self->{writefunc}, "CALL", $name, @args );
+   $self->write_message( "CALL", $name, @args );
 
-   my ( $ret, @retargs ) = read_operation( $self->{readfunc} );
+   my ( $ret, @retargs ) = $self->read_message;
 
    # If the caller didn't want an array and we received more than one result
    # from the far end; we'll just have to throw it away...
@@ -438,18 +297,41 @@ sub call
    die "Unknown return result $ret\n";
 }
 
+=head2 $ips->use_library( $library, @funcs )
+
+This method loads a library of code from a module, and stores them to the
+remote perl by calling C<store> on each one. The C<$library> name may be a
+full class name, or a name within the C<IPC::PerlSSH::Library::> space.
+
+If the C<@funcs> list is non-empty, then only those named functions are stored
+(analogous to the C<use> perl statement). This may be useful in large
+libraries that define many functions, only a few of which are actually used.
+
+For more information, see L<IPC::PerlSSH::Library>.
+
+=cut
+
+sub use_library
+{
+   my $self = shift;
+
+   my %funcs = $self->load_library( @_ );
+
+   foreach my $name ( keys %funcs ) {
+      $self->store( $name, $funcs{$name} );
+   }
+}
+
 sub DESTROY
 {
    my $self = shift;
 
-   send_operation( $self->{writefunc}, "QUIT" );
+   $self->SUPER::DESTROY;
 
    waitpid $self->{pid}, 0 if defined $self->{pid};
 }
 
-# We need to include the common shared perl library
-eval $COMMON_PERL;
-
+# Keep perl happy; keep Britain tidy
 1;
 
 =head1 AUTHOR

@@ -11,7 +11,9 @@ my $build = Module::Build->new
                  'IPC::Open2' => 0,
                },
    build_requires => {
+                        'File::Temp' => 0,
                         'Test::More' => 0,
+                        'Test::Exception' => 0,
                      },
    license => 'perl',
    create_makefile_pl => 'traditional',
