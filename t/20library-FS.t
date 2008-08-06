@@ -7,7 +7,7 @@ use File::Temp qw( tempdir );
 
 use IPC::PerlSSH;
 
-my $ips = IPC::PerlSSH->new( Command => "perl" );
+my $ips = IPC::PerlSSH->new( Command => "$^X" );
 
 $ips->use_library( "FS" );
 

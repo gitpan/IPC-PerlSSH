@@ -8,7 +8,7 @@ package IPC::PerlSSH::Library::FS;
 use strict;
 use IPC::PerlSSH::Library;
 
-our $VERSION = "0.08";
+our $VERSION = "0.09";
 
 =head1 NAME
 
@@ -51,7 +51,7 @@ return values in the same way as perl's. They throw exceptions via the
 C<IPC::PerlSSH> call when they fail, rather than returning undef, because
 otherwise C<$!> would be difficult to obtain.
 
- chown chmod lstat mkdir readlink rmdir stat symlink unlink utime
+ chown chmod lstat mkdir readlink rename rmdir stat symlink unlink utime
 
 =cut
 
@@ -75,6 +75,10 @@ func( 'mkdir',
 
 func( 'readlink',
       q{my $l = readlink $_[0]; defined $l or die "Cannot readlink('$_[0]') - $!"; $l}
+);
+
+func( 'rename',
+      q{rename $_[0], $_[1] or die "Cannot rename('$_[0]','$_[1]') - $!"}
 );
 
 func( 'rmdir',

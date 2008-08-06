@@ -12,7 +12,7 @@ $SIG{ALRM} = sub {
 
 alarm( 5 );
 
-my $ips = IPC::PerlSSH->new( Command => "perl" );
+my $ips = IPC::PerlSSH->new( Command => "$^X" );
 ok( defined $ips, "Constructor" );
 
 alarm( 5 );

@@ -13,7 +13,7 @@ use IPC::Open2;
 
 use Carp;
 
-our $VERSION = "0.08";
+our $VERSION = "0.09";
 
 =head1 NAME
 
@@ -326,7 +326,11 @@ sub DESTROY
 {
    my $self = shift;
 
-   $self->SUPER::DESTROY;
+   undef $self->{readfunc};
+   undef $self->{writefunc};
+   # This will clean up the closures, and hence close the filehandles that are
+   # referenced by them. The remote perl will then shut down, and we can wait
+   # for the child process to exit
 
    waitpid $self->{pid}, 0 if defined $self->{pid};
 }

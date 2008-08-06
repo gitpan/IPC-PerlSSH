@@ -9,7 +9,7 @@ use strict;
 
 use Carp;
 
-our $VERSION = "0.08";
+our $VERSION = "0.09";
 
 =head1 NAME
 
@@ -54,7 +54,7 @@ sub read_message
    local $/ = "\n";
 
    my $message = <STDIN>;
-   defined $message or die "Expected message\n";
+   defined $message or return "QUIT";
    chomp $message;
 
    my $numargs = <STDIN>;
@@ -259,13 +259,6 @@ sub load_library
    }
 
    return IPC::PerlSSH::Library::funcs( $classname, @funcs );
-}
-
-sub DESTROY
-{
-   my $self = shift;
-
-   $self->write_message( "QUIT" );
 }
 
 # Keep perl happy; keep Britain tidy

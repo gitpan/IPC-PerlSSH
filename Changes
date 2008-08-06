@@ -1,5 +1,9 @@
 Revision history for IPC-PerlSSH
 
+0.09    CHANGES:
+         * Neater cleanup behaviour on unref
+         * Added 'rename' FS library function
+
 0.08    CHANGES:
          * Added Changes notes file
          * Added ->use_library() functionallity
