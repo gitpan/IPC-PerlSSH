@@ -1,5 +1,10 @@
 Revision history for IPC-PerlSSH
 
+0.10    CHANGES:
+         * Documentation fix to Library::FS::writefile()
+         * Neater behaviour in Base.pm for subclasses when parse_message()
+           fails
+
 0.09    CHANGES:
          * Neater cleanup behaviour on unref
          * Added 'rename' FS library function

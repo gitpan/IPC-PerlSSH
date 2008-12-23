@@ -9,7 +9,7 @@ use strict;
 
 use Carp;
 
-our $VERSION = "0.09";
+our $VERSION = '0.10';
 
 =head1 NAME
 
@@ -185,15 +185,15 @@ sub parse_message
    my $self = shift;
    my $buffer = $_[0]; # We'll assign it back at the end if successful
 
-   $buffer =~ s/^(.*)\n(.*)\n// or return undef;
+   $buffer =~ s/^(.*)\n(.*)\n// or return;
    my ( $message, $numargs ) = ( $1, $2 );
 
    my @args;
    while( $numargs ) {
-      $buffer =~ s/^(.*)\n// or return undef;
+      $buffer =~ s/^(.*)\n// or return;
       my $arglen = $1;
 
-      length $buffer >= $arglen or return undef;
+      length $buffer >= $arglen or return;
 
       my $arg = substr( $buffer, 0, $arglen, "" );
 

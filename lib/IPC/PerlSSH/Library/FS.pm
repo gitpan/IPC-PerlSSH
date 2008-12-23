@@ -8,7 +8,7 @@ package IPC::PerlSSH::Library::FS;
 use strict;
 use IPC::PerlSSH::Library;
 
-our $VERSION = "0.09";
+our $VERSION = '0.10';
 
 =head1 NAME
 
@@ -214,7 +214,7 @@ func( 'readdir',
 The following functions are newly defined to wrap common perl idoms
 
  my $content = $ips->call( "readfile", $filepath );
- $ips->call( "writefile", $newcontent );
+ $ips->call( "writefile", $filepath, $newcontent );
 
 =cut
 
