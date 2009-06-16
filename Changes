@@ -1,5 +1,13 @@
 Revision history for IPC-PerlSSH
 
+0.11    CHANGES:
+         * Added 'use warnings'
+         * Created Run and IO libraries
+         * Apply 'package' statements to remote stored code and libraries;
+           allow libaries to persist package variables
+         * Report the offending line of code in remote compile errors
+         * Various other code and documentation updates
+
 0.10    CHANGES:
          * Documentation fix to Library::FS::writefile()
          * Neater behaviour in Base.pm for subclasses when parse_message()

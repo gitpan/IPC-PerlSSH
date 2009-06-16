@@ -1,11 +1,12 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2006-2008 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2006-2009 -- leonerd@leonerd.org.uk
 
 package IPC::PerlSSH;
 
 use strict;
+use warnings;
 
 use base qw( IPC::PerlSSH::Base );
 
@@ -13,22 +14,11 @@ use IPC::Open2;
 
 use Carp;
 
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 
 =head1 NAME
 
 C<IPC::PerlSSH> - a class for executing remote perl code over an SSH link
-
-=head1 DESCRIPTION
-
-This module provides an object class that provides a mechanism to execute perl
-code in a remote instance of perl running on another host, communicated via an
-SSH link or similar connection. Where it differs from most other IPC modules
-is that no special software is required on the remote end, other than the
-ability to run perl. In particular, it is not required that the
-C<IPC::PerlSSH> module is installed there. Nor are any special administrative
-rights required; any account that has shell access and can execute the perl
-binary on the remote host can use this module.
 
 =head1 SYNOPSIS
 
@@ -54,6 +44,63 @@ binary on the remote host can use this module.
     my $content = $ips->call( "get_file", $file );
     ...
  }
+
+=head1 DESCRIPTION
+
+This module provides an object class that provides a mechanism to execute perl
+code in a remote instance of perl running on another host, communicated via an
+SSH link or similar connection. Where it differs from most other IPC modules
+is that no special software is required on the remote end, other than the
+ability to run perl. In particular, it is not required that the
+C<IPC::PerlSSH> module is installed there. Nor are any special administrative
+rights required; any account that has shell access and can execute the perl
+binary on the remote host can use this module.
+
+=head2 Argument Passing
+
+The arguments to, and return values from, remote code are always transferred
+as lists of strings. This has the following effects on various types of
+values:
+
+=over 8
+
+=item *
+
+String values are passed as they stand.
+
+=item *
+
+Booleans and integers will become stringified, but will work as expected once
+they reach the other side of the connection.
+
+=item *
+
+Floating-point numbers will get converted to a decimal notation, which may
+lose precision.
+
+=item *
+
+A single array of strings, or a single hash of string values, can be passed
+by-value as a list, possibly after positional arguments:
+
+ $ips->store( 'foo', 'my ( $arg, @list ) = @_; ...' );
+
+ $ips->store( 'bar', 'my %opts = @_; ...' );
+
+=item *
+
+No reference value, including IO handles, can be passed; instead it will be
+stringified.
+
+=back
+
+To pass or return a more complex structure, consider using a module such as
+L<Storable>, which can serialise the structure into a plain string, to be
+deserialised on the remote end. Be aware however, that C<Storable> was only
+added to core in perl 5.7.3, so if the remote perl is older, it may not be
+available.
+
+To work with remote IO handles, see the L<IPC::PerlSSH::Library::IO> module.
 
 =cut
 
@@ -126,6 +173,7 @@ sub new
 
    my $self = bless {
       readbuff => "",
+      stored => {},
    }, $class;
 
    my ( $readfunc, $writefunc ) = ( $opts{Readfunc}, $opts{Writefunc} );
@@ -188,12 +236,6 @@ the result.
 The code should be passed in a string, and is evaluated using a string
 C<eval> in the remote host, in list context. If this method is called in
 scalar context, then only the first element of the returned list is returned.
-Only string scalar values are supported in either the arguments or the return
-values; no deeply-nested structures can be passed.
-
-To pass or return a more complex structure, consider using a module such as
-L<Storable>, which can serialise the structure into a plain string, to be
-deserialised on the remote end.
 
 If the remote code threw an exception, then this function propagates it as a
 plain string.
@@ -209,41 +251,74 @@ sub eval
 
    my ( $ret, @retargs ) = $self->read_message;
 
-   # If the caller didn't want an array and we received more than one result
-   # from the far end; we'll just have to throw it away...
-   return wantarray ? @retargs : $retargs[0] if( $ret eq "RETURNED" );
-
-   die "Remote host threw an exception:\n$retargs[0]" if( $ret eq "DIED" );
-
-   die "Unknown return result $ret\n";
+   if( $ret eq "RETURNED" ) {
+      # If the caller didn't want an array and we received more than one result
+      # from the far end; we'll just have to throw it away...
+      return wantarray ? @retargs : $retargs[0];
+   }
+   elsif( $ret eq "DIED" ) {
+      my ( $message ) = @retargs;
+      if( $message =~ m/^While compiling code:.* at \(eval \d+\) line (\d+)/ ) {
+         $message .= " ==> " . (split m/\n/, $code)[$1 - 1] . "\n";
+      }
+      die "Remote host threw an exception:\n$message";
+   }
+   else {
+      die "Unknown return result $ret\n";
+   }
 }
 
 =head2 $ips->store( $name, $code )
 
-This method sends code to the remote host to store in a named procedure which
-can be executed later. The code should be passed in a string, along with a
-name which can later be called by the C<call> method.
+=head2 $ips->store( %funcs )
 
-While the code is not executed, it will still be compiled into a CODE
-reference in the remote host. Any compile errors that occur will be throw as
-exceptions by this method.
+This method sends code to the remote host to store in named procedure(s) which
+can be executed later. The code should be passed in strings.
+
+While the code is not executed, it will still be compiled into CODE references
+in the remote host. Any compile errors that occur will be throw as exceptions
+by this method.
+
+Multiple functions may be passed in a hash, to reduce the number of network
+roundtrips, which may help latency.
 
 =cut
 
 sub store
 {
    my $self = shift;
-   my ( $name, $code ) = @_;
+   my %funcs = @_;
 
-   $self->write_message( "STORE", $name, $code );
+   foreach my $name ( keys %funcs ) {
+      $self->_has_stored_code( $name ) and croak "Already have a stored function called '$name'";
+   }
+
+   $self->write_message( "STORE", %funcs );
 
    my ( $ret, @retargs ) = $self->read_message;
 
-   return if( $ret eq "OK" );
+   if( $ret eq "OK" ) {
+      $self->{stored}{$_} = 1 for keys %funcs;
+      return;
+   }
+   elsif( $ret eq "DIED" ) {
+      my ( $message ) = @retargs;
+      if( $message =~ m/^While compiling code for (\S+):.* at \(eval \d+\) line (\d+)/ ) {
+         my $code = $funcs{$1};
+         $message .= " ==> " . (split m/\n/, $code)[$2 - 1] . "\n";
+      }
+      die "Remote host threw an exception:\n$message";
+   }
+   else {
+      die "Unknown return result $ret\n";
+   }
+}
 
-   die "Remote host threw an exception:\n$retargs[0]" if( $ret eq "DIED" );
-
-   die "Unknown return result $ret\n";
+sub _has_stored_code
+{
+   my $self = shift;
+   my ( $name ) = @_;
+   return exists $self->{stored}{$name};
 }
 
 =head2 $ips->bind( $name, $code )
@@ -284,17 +359,23 @@ sub call
    my $self = shift;
    my ( $name, @args ) = @_;
 
+   $self->_has_stored_code( $name ) or croak "Do not have a stored function called '$name'";
+
    $self->write_message( "CALL", $name, @args );
 
    my ( $ret, @retargs ) = $self->read_message;
 
-   # If the caller didn't want an array and we received more than one result
-   # from the far end; we'll just have to throw it away...
-   return wantarray ? @retargs : $retargs[0] if( $ret eq "RETURNED" );
-
-   die "Remote host threw an exception:\n$retargs[0]" if( $ret eq "DIED" );
-
-   die "Unknown return result $ret\n";
+   if( $ret eq "RETURNED" ) {
+      # If the caller didn't want an array and we received more than one result
+      # from the far end; we'll just have to throw it away...
+      return wantarray ? @retargs : $retargs[0];
+   }
+   elsif( $ret eq "DIED" ) {
+      die "Remote host threw an exception:\n$retargs[0]";
+   }
+   else {
+      die "Unknown return result $ret\n";
+   }
 }
 
 =head2 $ips->use_library( $library, @funcs )
@@ -315,10 +396,24 @@ sub use_library
 {
    my $self = shift;
 
-   my %funcs = $self->load_library( @_ );
+   my ( $package, $funcs ) = $self->load_library_pkg( @_ );
 
-   foreach my $name ( keys %funcs ) {
-      $self->store( $name, $funcs{$name} );
+   $self->{stored_pkg}{$package} and delete $funcs->{_init};
+
+   $self->write_message( "STOREPKG", $package, %$funcs );
+
+   my ( $ret, @retargs ) = $self->read_message;
+
+   if( $ret eq "OK" ) {
+      $self->{stored_pkg}{$package} = 1;
+      $self->{stored}{$_} = 1 for keys %$funcs;
+      return;
+   }
+   elsif( $ret eq "DIED" ) {
+      die "Remote host threw an exception:\n$retargs[0]";
+   }
+   else {
+      die "Unknown return result $ret\n";
    }
 }
 
@@ -340,6 +435,6 @@ sub DESTROY
 
 =head1 AUTHOR
 
-Paul Evans E<lt>leonerd@leonerd.org.ukE<gt>
+Paul Evans <leonerd@leonerd.org.uk>
 
 =cut

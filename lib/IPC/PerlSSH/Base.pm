@@ -1,15 +1,16 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2006-2008 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2006-2009 -- leonerd@leonerd.org.uk
 
 package IPC::PerlSSH::Base;
 
 use strict;
+use warnings;
 
 use Carp;
 
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 
 =head1 NAME
 
@@ -30,8 +31,6 @@ using this as a base class.
 # And now for the main loop of the remote firmware
 my $REMOTE_PERL = <<'EOP';
 $| = 1;
-
-my %stored_procedures;
 
 sub send_message
 {
@@ -81,6 +80,34 @@ sub read_message
    return ( $message, @args );
 }
 
+my %compilers;
+my %stored_procedures;
+
+sub store
+{
+   my ( $package, %subs ) = @_;
+
+   my $compiler;
+   unless( $compiler = $compilers{$package} ) {
+      my $preamble = delete $subs{_init} || "";
+      $compiler = eval "package $package; $preamble; sub { eval \$_[0] }";
+      if( $@ ) {
+         send_message( "DIED", "While compiling initialisation code: $@" );
+         return;
+      }
+      $compilers{$package} = $compiler;
+   }
+
+   foreach my $name ( keys %subs ) {
+      $stored_procedures{$name} = $compiler->( "sub { $subs{$name} }" ) and next;
+      send_message( "DIED", "While compiling code for $name: $@" );
+      return;
+   }
+
+   send_message( "OK" );
+   return;
+}
+
 while( 1 ) {
    my ( $message, @args ) = read_message;
 
@@ -109,16 +136,12 @@ while( 1 ) {
    }
    
    if( $message eq "STORE" ) {
-      my ( $name, $code ) = @args;
+      store( "main", @args );
+      next;
+   }
 
-      my $subref = eval "sub { $code }";
-      if( $@ ) {
-         send_message( "DIED", "While compiling code: $@" );
-         next;
-      }
-
-      $stored_procedures{$name} = $subref;
-      send_message( "OK" );
+   if( $message eq "STOREPKG" ) {
+      store( @args );
       next;
    }
 
@@ -226,7 +249,7 @@ sub write_message
    $self->write( $buffer );
 }
 
-sub load_library
+sub load_library_pkg
 {
    my $self = shift;
    my ( $library, @funcs ) = @_;
@@ -258,7 +281,29 @@ sub load_library
       croak "Cannot find an IPC::PerlSSH library called $library";
    }
 
-   return IPC::PerlSSH::Library::funcs( $classname, @funcs );
+   my %funcs = IPC::PerlSSH::Library::funcs( $classname, @funcs );
+
+   # Don't bother loading again anything already present
+   foreach my $name ( keys %funcs ) {
+      next if $name =~ m/^_/;
+
+      $self->_has_stored_code( $name ) and delete $funcs{$name};
+   }
+
+   return $classname, \%funcs;
+}
+
+sub load_library
+{
+   my $self = shift;
+   ( undef, my $funcs ) = $self->load_library_pkg( @_ );
+   return %$funcs;
+}
+
+# for subclasses to override
+sub _has_stored_code
+{
+   return 0;
 }
 
 # Keep perl happy; keep Britain tidy
@@ -266,6 +311,6 @@ sub load_library
 
 =head1 AUTHOR
 
-Paul Evans E<lt>leonerd@leonerd.org.ukE<gt>
+Paul Evans <leonerd@leonerd.org.uk>
 
 =cut

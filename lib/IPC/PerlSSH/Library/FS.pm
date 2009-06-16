@@ -1,29 +1,21 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2008 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2008,2009 -- leonerd@leonerd.org.uk
 
 package IPC::PerlSSH::Library::FS;
 
 use strict;
+use warnings;
+
 use IPC::PerlSSH::Library;
 
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 
 =head1 NAME
 
 C<IPC::PerlSSH::Library::FS> - a library of filesystem functions for
 C<IPC::PerlSSH>
-
-=head1 DESCRIPTION
-
-This module provides a library of functions for interating with the remote
-filesystem. It provides wrappers for most of the perl filesystem functions,
-and some useful new functions that are more convenient to call remotely.
-
-Because of the large number of functions defined by this library, it is
-recommended to only load the ones being used by the program, to avoid sending
-unnecessary data when setting up SSH connections across slow links.
 
 =head1 SYNOPSIS
 
@@ -40,6 +32,16 @@ unnecessary data when setting up SSH connections across slow links.
  Some secret contents of my file here
  EOF
 
+=head1 DESCRIPTION
+
+This module provides a library of functions for interating with the remote
+filesystem. It provides wrappers for most of the perl filesystem functions,
+and some useful new functions that are more convenient to call remotely.
+
+Because of the large number of functions defined by this library, it is
+recommended to only load the ones being used by the program, to avoid sending
+unnecessary data when setting up SSH connections across slow links.
+
 =cut
 
 =head1 FUNCTIONS
@@ -55,52 +57,41 @@ otherwise C<$!> would be difficult to obtain.
 
 =cut
 
-func( 'chown',
-      q{my $uid = shift; my $gid = shift;
-        chown $uid, $gid, $_ or die "Cannot chown($uid, $gid, '$_') - $!" for @_;}
-);
+func chown =>
+   q{my $uid = shift; my $gid = shift;
+      chown $uid, $gid, $_ or die "Cannot chown($uid, $gid, '$_') - $!" for @_;};
 
-func( 'chmod',
-      q{my $mode = shift;
-        chmod $mode, $_ or die "Cannot chmod($mode, '$_') - $!" for @_;}
-);
+func chmod =>
+   q{my $mode = shift;
+     chmod $mode, $_ or die "Cannot chmod($mode, '$_') - $!" for @_;};
 
-func( 'lstat',
-      q{my @s = lstat $_[0]; @s or die "Cannot lstat('$_[0]') - $!"; @s}
-);
+func lstat =>
+   q{my @s = lstat $_[0]; @s or die "Cannot lstat('$_[0]') - $!"; @s};
 
-func( 'mkdir',
-      q{mkdir $_[0] or die "Cannot mkdir('$_[0]') - $!"}
-);
+func mkdir =>
+   q{mkdir $_[0] or die "Cannot mkdir('$_[0]') - $!"};
 
-func( 'readlink',
-      q{my $l = readlink $_[0]; defined $l or die "Cannot readlink('$_[0]') - $!"; $l}
-);
+func readlink =>
+   q{my $l = readlink $_[0]; defined $l or die "Cannot readlink('$_[0]') - $!"; $l};
 
-func( 'rename',
-      q{rename $_[0], $_[1] or die "Cannot rename('$_[0]','$_[1]') - $!"}
-);
+func rename =>
+   q{rename $_[0], $_[1] or die "Cannot rename('$_[0]','$_[1]') - $!"};
 
-func( 'rmdir',
-      q{rmdir $_[0] or die "Cannot rmdir('$_[0]') - $!"}
-);
+func rmdir =>
+   q{rmdir $_[0] or die "Cannot rmdir('$_[0]') - $!"};
 
-func( 'stat',
-      q{my @s = stat $_[0]; @s or die "Cannot stat('$_[0]') - $!"; @s}
-);
+func stat =>
+   q{my @s = stat $_[0]; @s or die "Cannot stat('$_[0]') - $!"; @s};
 
-func( 'symlink',
-      q{symlink $_[0], $_[1] or die "Cannot symlink('$_[0]','$_[1]') - $!"}
-);
+func symlink =>
+   q{symlink $_[0], $_[1] or die "Cannot symlink('$_[0]','$_[1]') - $!"};
 
-func( 'unlink',
-      q{unlink $_[0] or die "Cannot unlink('$_[0]') - $!"}
-);
+func unlink =>
+   q{unlink $_[0] or die "Cannot unlink('$_[0]') - $!"};
 
-func( 'utime',
-      q{my $atime = shift; my $mtime = shift;
-        utime $atime, $mtime, $_ or die "Cannot utime($atime, $mtime, '$_') - $!" for @_}
-);
+func utime =>
+   q{my $atime = shift; my $mtime = shift;
+     utime $atime, $mtime, $_ or die "Cannot utime($atime, $mtime, '$_') - $!" for @_};
 
 =head2 Variations on C<stat()>
 
@@ -203,11 +194,10 @@ true. F<.> and F<..> are always skipped.
 
 =cut
 
-func( 'readdir',
-      q{opendir( my $dirh, $_[0] ) or die "Cannot opendir('$_[0]') - $!";
-        my @ents = readdir( $dirh );
-        grep { $_[1] ? $_ !~ m/^\.\.?$/ : $_ !~ m/^\./ } @ents}
-);
+func readdir =>
+   q{opendir( my $dirh, $_[0] ) or die "Cannot opendir('$_[0]') - $!";
+     my @ents = readdir( $dirh );
+     grep { $_[1] ? $_ !~ m/^\.\.?$/ : $_ !~ m/^\./ } @ents};
 
 =head2 New Functions
 
@@ -218,21 +208,19 @@ The following functions are newly defined to wrap common perl idoms
 
 =cut
 
-func( 'readfile',
-      q{open( my $fileh, "<", $_[0] ) or die "Cannot open('$_[0]') for reading - $!";
-        local $/; <$fileh>}
-);
+func readfile =>
+   q{open( my $fileh, "<", $_[0] ) or die "Cannot open('$_[0]') for reading - $!";
+     local $/; <$fileh>};
 
-func( 'writefile',
-      q{open( my $fileh, ">", $_[0] ) or die "Cannot open('$_[0]') for writing - $!";
-        print $fileh $_[1] or die "Cannot print to '$_[0]' - $!"}
-);
+func writefile =>
+   q{open( my $fileh, ">", $_[0] ) or die "Cannot open('$_[0]') for writing - $!";
+     print $fileh $_[1] or die "Cannot print to '$_[0]' - $!"};
 
 # Keep perl happy; keep Britain tidy
 1;
 
 =head1 AUTHOR
 
-Paul Evans E<lt>leonerd@leonerd.org.ukE<gt>
+Paul Evans <leonerd@leonerd.org.uk>
 
 =cut

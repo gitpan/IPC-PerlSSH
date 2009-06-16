@@ -2,7 +2,8 @@
 
 use strict;
 
-use Test::More tests => 9;
+use Test::More tests => 10;
+use Test::Exception;
 
 use IPC::PerlSSH;
 
@@ -58,6 +59,10 @@ alarm( 5 );
 $/ = undef;
 $total = $ips->call( 'add', 1, 2 );
 is( $total, 3, "Copes with nondefault \$/" );
+
+# Storing a second time should fail
+dies_ok( sub { $ips->store( 'add', 'return 0' ) },
+         "Storing a second time fails" );
 
 # Test with an arrayref for Command
 $ips = IPC::PerlSSH->new( Command => [ "perl", "-w" ] );

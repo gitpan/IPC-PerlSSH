@@ -4,14 +4,23 @@ lib/IPC/PerlSSH.pm
 lib/IPC/PerlSSH/Base.pm
 lib/IPC/PerlSSH/Library.pm
 lib/IPC/PerlSSH/Library/FS.pm
+lib/IPC/PerlSSH/Library/IO.pm
+lib/IPC/PerlSSH/Library/Run.pm
+LICENSE
 Makefile.PL
 MANIFEST			This list of files
 META.yml
+README
 t/01require.t
 t/02functest.t
 t/03perltest.t
 t/04sshtest.t
+t/05bigeval.t
 t/10library-load.t
+t/11library-init.t
 t/20library-FS.t
+t/21library-Run.t
+t/22library-IO.t
 t/Error.pm
 t/Math.pm
+t/Stash.pm
