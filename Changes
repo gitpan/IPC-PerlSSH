@@ -1,5 +1,11 @@
 Revision history for IPC-PerlSSH
 
+0.12    BUGFIXES:
+         * Handle SIGPIPE in Run::system_inout, handle exec() failures
+         * Always load library initialisation, even with partial load lists
+         * Fix tests/libraries to work on perl versions prior to 5.10 -
+           package variables need re-declaring
+
 0.11    CHANGES:
          * Added 'use warnings'
          * Created Run and IO libraries

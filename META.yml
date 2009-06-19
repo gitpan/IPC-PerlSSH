@@ -1,6 +1,6 @@
 ---
 name: IPC-PerlSSH
-version: 0.11
+version: 0.12
 author:
   - 'Paul Evans <leonerd@leonerd.org.uk>'
 abstract: a class for executing remote perl code over an SSH link
@@ -16,22 +16,22 @@ build_requires:
 provides:
   IPC::PerlSSH:
     file: lib/IPC/PerlSSH.pm
-    version: 0.11
+    version: 0.12
   IPC::PerlSSH::Base:
     file: lib/IPC/PerlSSH/Base.pm
-    version: 0.11
+    version: 0.12
   IPC::PerlSSH::Library:
     file: lib/IPC/PerlSSH/Library.pm
-    version: 0.11
+    version: 0.12
   IPC::PerlSSH::Library::FS:
     file: lib/IPC/PerlSSH/Library/FS.pm
-    version: 0.11
+    version: 0.12
   IPC::PerlSSH::Library::IO:
     file: lib/IPC/PerlSSH/Library/IO.pm
-    version: 0.11
+    version: 0.12
   IPC::PerlSSH::Library::Run:
     file: lib/IPC/PerlSSH/Library/Run.pm
-    version: 0.11
+    version: 0.12
 generated_by: Module::Build version 0.33
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html

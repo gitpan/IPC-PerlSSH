@@ -12,7 +12,7 @@ use base qw( Exporter );
 our @EXPORT = qw( init func );
 use Carp;
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 =head1 NAME
 
@@ -55,12 +55,15 @@ initialisation code, passed to the C<init()> function.
 
 Typically this code could C<use> a perl module, or declare shared variables
 or functions. Be careful when C<use>ing a module, as the remote perl executing
-it may not have the same modules installed as the local machine.
+it may not have the same modules installed as the local machine, or even be of
+the same version.
 
 Note that C<our> variables will be available for use in stored code, but
 limitations of the way perl's lexical scopes work mean that C<my> variables
-will not. They will, however, compile sucessfully. They just don't preserve
-their value.
+will not. On versions of perl before 5.10, the variable will have to be
+C<our>ed again in each block of code that requires it. On 5.10 and above, this
+is not necessary; but beware that the code will not work on remote perls before
+this version, even if the local perl is 5.10.
 
 For example, consider the following small example:
 
@@ -75,8 +78,8 @@ For example, consider the following small example:
     sub clear { undef %storage }
  };
 
- func get   => q{ return $storage{$_[0]} };
- func set   => q{ $storage{$_[0]} = $_[1] };
+ func get   => q{ our %storage; return $storage{$_[0]} };
+ func set   => q{ our %storage; $storage{$_[0]} = $_[1] };
  func clear => q{ clear() }
  func list  => q{ return list() }
 
@@ -140,6 +143,8 @@ sub funcs
    $package_funcs or croak "$classname does not define any library functions";
 
    my %funcs;
+   # Always report the _init function
+   $funcs{_init} = $package_funcs->{_init} if exists $package_funcs->{_init};
 
    if( @funcs ) {
       foreach my $f ( @funcs ) {

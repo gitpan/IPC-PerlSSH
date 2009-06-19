@@ -14,7 +14,7 @@ use IPC::Open2;
 
 use Carp;
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 =head1 NAME
 
@@ -30,18 +30,24 @@ C<IPC::PerlSSH> - a class for executing remote perl code over an SSH link
  my @remote_uname = $ips->eval( "uname()" );
 
  # We can pass arguments
- $ips->eval( "open FILE, ">", shift; print FILE shift; close FILE;",
-             "foo.txt",
-             "Hello, world!" );
+ $ips->eval( 'open FILE, ">", $_[0]; print FILE $_[1]; close FILE;',
+             "foo.txt", "Hello, world!" );
 
  # We can pre-compile stored procedures
- $ips->store( "get_file", "local $/; 
-                           open FILE, "<", shift;
+ $ips->store( "get_file", 'local $/; 
+                           open FILE, "<", $_[0];
                            $_ = <FILE>;
                            close FILE;
-                           return $_;" );
+                           return $_;' );
  foreach my $file ( @files ) {
     my $content = $ips->call( "get_file", $file );
+    ...
+ }
+
+ # We can use existing libraries for remote stored procedures
+ $ips->use_library( "FS", qw( readfile ) );
+ foreach my $file ( @files ) {
+    my $content = $ips->call( "readfile", $file );
     ...
  }
 
@@ -163,6 +169,12 @@ In each case, the returned value should be the number of bytes read or
 written.
 
 =back
+
+The C<Command> key can be used to create an C<IPC::PerlSSH> running perl
+directly on the local machine, for example; so that the "remote" perl is in
+fact running locally, but still in its own process.
+
+ my $ips = IPC::PerlSSH->new( Command => $^X );
 
 =cut
 

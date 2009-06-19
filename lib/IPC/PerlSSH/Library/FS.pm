@@ -10,7 +10,7 @@ use warnings;
 
 use IPC::PerlSSH::Library;
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 =head1 NAME
 
@@ -23,7 +23,7 @@ C<IPC::PerlSSH>
 
  my $ips = IPC::PerlSSH->new( Host => "over.there" );
 
- $ips->load_library( "FS", qw( mkdir chmod writefile ) );
+ $ips->use_library( "FS", qw( mkdir chmod writefile ) );
 
  $ips->call( "mkdir", "/tmp/testing" );
  $ips->call( "chmod", 0600, "/tmp/testing" );
@@ -205,6 +205,9 @@ The following functions are newly defined to wrap common perl idoms
 
  my $content = $ips->call( "readfile", $filepath );
  $ips->call( "writefile", $filepath, $newcontent );
+
+To open a remote filehandle and interact with it over a sequence of multiple
+calls, see also L<IPC::PerlSSH::Library::IO>.
 
 =cut
 

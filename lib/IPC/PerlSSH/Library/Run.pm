@@ -10,7 +10,7 @@ use warnings;
 
 use IPC::PerlSSH::Library;
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 =head1 NAME
 
@@ -23,7 +23,7 @@ C<IPC::PerlSSH>
 
  my $ips = IPC::PerlSSH->new( Host => "over.there" );
 
- $ips->load_library( "Run", qw( system system_out system_in ) );
+ $ips->use_library( "Run", qw( system system_out system_in ) );
 
  my ( $result, $out ) $ips->call( "system_out", qw( ip addr ls ) );
  $out == 0 or die "ip failed\n";
@@ -65,7 +65,8 @@ sub system_inout {
    if( $kid == 0 ) {
       open STDIN,  "<&=", $rd0; close $rd0; close $wr0;
       open STDOUT, ">&=", $wr1; close $rd1; close $wr1;
-      exec $path, @args or die "Cannot exec - $!";
+      exec $path, @args;
+      exit -1;
    }
 
    close $wr1; close $rd0;
@@ -73,6 +74,8 @@ sub system_inout {
    my $stdout = "";
    my $fn0 = fileno $wr0;
    my $fn1 = fileno $rd1;
+
+   local $SIG{PIPE} = "IGNORE";
 
    while(1) {
       undef $wr0 unless length $stdin;

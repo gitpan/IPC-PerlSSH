@@ -10,7 +10,7 @@ use warnings;
 
 use IPC::PerlSSH::Library;
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 =head1 NAME
 
@@ -23,7 +23,7 @@ C<IPC::PerlSSH>
 
  my $ips = IPC::PerlSSH->new( Host => "over.there" );
 
- $ips->load_library( "IO", qw( open fchmod write close ) );
+ $ips->use_library( "IO", qw( open fchmod write close ) );
 
  my $fd = $ips->call( "open", ">", "secret.txt" );
  $ips->call( "fchmod", $fd, 0600 );
@@ -86,6 +86,10 @@ In the case of pipe opens, L<IPC::PerlSSH::Library::Run> provides a selection
 of functions that may be more convenient for executing a child program on the
 remote perl, if interaction during its execution is not required.
 
+In the case of simple C<open> / C<read> / C<close> or C<open> / C<write> /
+C<close> sequences, see also the L<IPC::PerlSSH::Library::FS> functions
+C<readfile> and C<writefile>.
+
 =cut
 
 func open => q{
@@ -104,6 +108,7 @@ Close a remote filehandle.
 =cut
 
 func close => q{
+   our %handles;
    undef $handles{shift()};
 };
 
@@ -117,6 +122,7 @@ process exit status.
 =cut
 
 func pclose => q{
+   our %handles;
    my $fd = shift;
    my $fh = get_handle( $fd );
    undef $handles{$fd};

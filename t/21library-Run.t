@@ -8,7 +8,7 @@ use IPC::PerlSSH;
 
 my $ips = IPC::PerlSSH->new( Command => "$^X" );
 
-$ips->use_library( "Run" );
+$ips->use_library( "Run", qw( system system_in system_out system_inout ) );
 
 ok( 1, 'library loaded' );
 

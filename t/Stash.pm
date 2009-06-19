@@ -4,8 +4,8 @@ use IPC::PerlSSH::Library;
 
 init 'our %pad;';
 
-func put => '$pad{$_[0]} = $_[1]';
+func put => 'our %pad; $pad{$_[0]} = $_[1]';
 
-func get => '$pad{$_[0]}';
+func get => 'our %pad; $pad{$_[0]}';
 
 1;
