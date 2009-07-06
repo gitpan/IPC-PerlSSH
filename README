@@ -1,5 +1,5 @@
 NAME
-    "IPC::PerlSSH" - a class for executing remote perl code over an SSH link
+    "IPC::PerlSSH" - execute remote perl code over an SSH link
 
 SYNOPSIS
      use IPC::PerlSSH;

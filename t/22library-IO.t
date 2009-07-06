@@ -59,9 +59,13 @@ my @stat = $ips->call( "fstat", $fd );
 is( scalar @stat, 13, 'fstat returns 13-element list' );
 is_deeply( \@stat, [ stat "$dir/testfile" ], 'fstat == local stat' );
 
-$ips->call( "fchmod", $fd, 0755 );
+SKIP: {
+   skip( "Perl too old to support fchmod()", 1 ) if $] < 5.008008;
 
-is( (stat "$dir/testfile")[2] & 0777, 0755, 'fchmod works' );
+   $ips->call( "fchmod", $fd, 0755 );
+
+   is( (stat "$dir/testfile")[2] & 0777, 0755, 'fchmod works' );
+}
 
 # Can't test fchown without being root, but since it's simple and so similar
 # to fchmod we'll presume it works...

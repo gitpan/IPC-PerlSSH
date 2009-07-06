@@ -1,5 +1,8 @@
 Revision history for IPC-PerlSSH
 
+0.13    BUGFIXES:
+         * Avoid fchmod/fchown on perls before 5.8.8
+
 0.12    BUGFIXES:
          * Handle SIGPIPE in Run::system_inout, handle exec() failures
          * Always load library initialisation, even with partial load lists

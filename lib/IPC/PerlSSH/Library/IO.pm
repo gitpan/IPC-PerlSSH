@@ -10,7 +10,7 @@ use warnings;
 
 use IPC::PerlSSH::Library;
 
-our $VERSION = '0.12';
+our $VERSION = '0.13';
 
 =head1 NAME
 
@@ -244,9 +244,12 @@ Change the permissions on the remote filehandle.
 
 Note the order of arguments does not match perl's C<chmod()>.
 
+Only works on versions of remote F<perl> 5.8.8 and above.
+
 =cut
 
 func fchmod => q{
+   die "Perl too old for fchmod()" if $] < 5.008008;
    my $fh = get_handle( shift );
    chmod( $_[0], $fh ) or die "Cannot chmod() - $!\n";
 };
@@ -259,9 +262,12 @@ Changes the owner (and group) of the remote filehandle.
 
 Note the order of arguments does not match perl's C<chown()>.
 
+Only works on versions of remote F<perl> 5.8.8 and above.
+
 =cut
 
 func fchown => q{
+   die "Perl too old for fchown()" if $] < 5.008008;
    my $fh = get_handle( shift );
    chown( $_[0], $_[1], $fh ) or die "Cannot chown() - $!\n";
 };

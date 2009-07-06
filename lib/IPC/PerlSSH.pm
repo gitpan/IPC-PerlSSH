@@ -14,11 +14,11 @@ use IPC::Open2;
 
 use Carp;
 
-our $VERSION = '0.12';
+our $VERSION = '0.13';
 
 =head1 NAME
 
-C<IPC::PerlSSH> - a class for executing remote perl code over an SSH link
+C<IPC::PerlSSH> - execute remote perl code over an SSH link
 
 =head1 SYNOPSIS
 
