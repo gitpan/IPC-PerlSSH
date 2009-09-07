@@ -21,6 +21,7 @@ t/11library-init.t
 t/20library-FS.t
 t/21library-Run.t
 t/22library-IO.t
+t/99pod.t
 t/Error.pm
 t/Math.pm
 t/Stash.pm

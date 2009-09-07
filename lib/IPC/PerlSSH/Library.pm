@@ -12,7 +12,7 @@ use base qw( Exporter );
 our @EXPORT = qw( init func );
 use Carp;
 
-our $VERSION = '0.13';
+our $VERSION = '0.14';
 
 =head1 NAME
 

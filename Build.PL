@@ -11,7 +11,9 @@ my $build = Module::Build->new
                  'IPC::Open2' => 0,
                },
    build_requires => {
+                        'File::Spec' => 0,
                         'File::Temp' => 0,
+                        'IO::Handle' => 0,
                         'Test::More' => 0,
                         'Test::Exception' => 0,
                      },

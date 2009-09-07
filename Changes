@@ -1,5 +1,9 @@
 Revision history for IPC-PerlSSH
 
+0.14    CHANGES:
+         * Provide STDERR-capturing versions of Library::Run functions
+           (fixes https://rt.cpan.org/Ticket/Display.html?id=49440)
+
 0.13    BUGFIXES:
          * Avoid fchmod/fchown on perls before 5.8.8
 

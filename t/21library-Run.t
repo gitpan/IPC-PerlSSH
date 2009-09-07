@@ -2,13 +2,13 @@
 
 use strict;
 
-use Test::More tests => 6;
+use Test::More tests => 8;
 
 use IPC::PerlSSH;
 
 my $ips = IPC::PerlSSH->new( Command => "$^X" );
 
-$ips->use_library( "Run", qw( system system_in system_out system_inout ) );
+$ips->use_library( "Run", qw( system system_in system_out system_inout system_outerr ) );
 
 ok( 1, 'library loaded' );
 
@@ -24,3 +24,7 @@ is( $stdout, "Hello world\n", 'system_out stdout' );
 
 ( $result, $stdout ) = $ips->call( "system_inout", "Another input string\n", "$^X", "-pe", '$_ = uc' );
 is( $stdout, "ANOTHER INPUT STRING\n", 'system_inout stdout' );
+
+( $result, $stdout, my $stderr ) = $ips->call( "system_outerr", "$^X", "-e", 'print STDOUT "OUT\n"; print STDERR "ERR\n"' );
+is( $stdout, "OUT\n", 'system_outerr stdout' );
+is( $stderr, "ERR\n", 'system_errerr stderr' );

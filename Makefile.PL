@@ -5,7 +5,9 @@ WriteMakefile
           'NAME' => 'IPC::PerlSSH',
           'VERSION_FROM' => 'lib/IPC/PerlSSH.pm',
           'PREREQ_PM' => {
+                           'File::Spec' => 0,
                            'File::Temp' => 0,
+                           'IO::Handle' => 0,
                            'IPC::Open2' => 0,
                            'Test::Exception' => 0,
                            'Test::More' => 0
