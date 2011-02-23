@@ -10,7 +10,7 @@ use warnings;
 
 use IPC::PerlSSH::Library;
 
-our $VERSION = '0.14';
+our $VERSION = '0.15';
 
 =head1 NAME
 
@@ -212,7 +212,7 @@ func system_outerr => q{ system_inouterr( 1, "", @_ ) };
 =head2 system_inouterr
 
 Execute a program with the given arguments, passing in a string to its STDIN,
-and returning its exit status and what it wrote on STDOUT.
+and returning its exit status and what it wrote on STDOUT and STDERR.
 
  my ( $exitstatus, $stdout, $stderr ) =
     $ips->call( "system_inouterr", $stdin, $path, @args )
@@ -221,11 +221,10 @@ and returning its exit status and what it wrote on STDOUT.
 
 func system_inouterr => q{ system_inouterr( 1, @_ ) };
 
-# Keep perl happy; keep Britain tidy
-1;
-
 =head1 AUTHOR
 
 Paul Evans <leonerd@leonerd.org.uk>
 
 =cut
+
+0x55AA;

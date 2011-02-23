@@ -1,18 +1,18 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2008,2009 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2008-2010 -- leonerd@leonerd.org.uk
 
 package IPC::PerlSSH::Library;
 
 use strict;
 use warnings;
 
-use base qw( Exporter );
+use Exporter 'import';
 our @EXPORT = qw( init func );
 use Carp;
 
-our $VERSION = '0.14';
+our $VERSION = '0.15';
 
 =head1 NAME
 
@@ -159,11 +159,10 @@ sub funcs
    %funcs;
 }
 
-# Keep perl happy; keep Britain tidy
-1;
-
 =head1 AUTHOR
 
 Paul Evans <leonerd@leonerd.org.uk>
 
 =cut
+
+0x55AA;

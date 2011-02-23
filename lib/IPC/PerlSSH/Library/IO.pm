@@ -1,7 +1,7 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2009 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2009-2011 -- leonerd@leonerd.org.uk
 
 package IPC::PerlSSH::Library::IO;
 
@@ -10,11 +10,11 @@ use warnings;
 
 use IPC::PerlSSH::Library;
 
-our $VERSION = '0.14';
+our $VERSION = '0.15';
 
 =head1 NAME
 
-C<IPC::PerlSSH::Library::FS> - a library of file IO functions for
+C<IPC::PerlSSH::Library::IO> - a library of file IO functions for
 C<IPC::PerlSSH>
 
 =head1 SYNOPSIS
@@ -272,11 +272,10 @@ func fchown => q{
    chown( $_[0], $_[1], $fh ) or die "Cannot chown() - $!\n";
 };
 
-# Keep perl happy; keep Britain tidy
-1;
-
 =head1 AUTHOR
 
 Paul Evans <leonerd@leonerd.org.uk>
 
 =cut
+
+0x55AA;

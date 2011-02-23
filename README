@@ -75,53 +75,41 @@ DESCRIPTION
     To work with remote IO handles, see the IPC::PerlSSH::Library::IO
     module.
 
-FUNCTIONS
-  $ips = IPC::PerlSSH->new( @args )
-    This function returns a new instance of a "IPC::PerlSSH" object. The
-    connection can be specified in one of three ways, given in the @args
-    list:
+CONSTRUCTORS
+  $ips = IPC::PerlSSH->new( Host => $host, ... )
+    Returns a new instance of a "IPC::PerlSSH" object connected to the
+    specified host. The following arguments can be specified:
 
-    *   Connecting to a named host.
+    Host => STRING
+            Connect to a named host.
 
-         Host => $hostname
+    Port => INT
+            Optionally specify a non-default port.
 
-        Optionally passing in the path to the perl binary in the remote host
+    Perl => STRING
+            Optionally pass in the path to the perl binary in the remote
+            host.
 
-         Perl => $perl
+    User => STRING
+            Optionally pass in an alternative username
 
-        Optionally passing in an alternative username
+    SshPath => STRING
+            Optionally specify a different path to the ssh binary
 
-         User => $user
+    SshOptions => ARRAY
+            Optionally specify any other options to pass to the ssh binary,
+            in an "ARRAY" reference
 
-        Optionally specifying a different path to the ssh binary
+  $ips = IPC::PerlSSH->new( Command => \@command, ... )
+    Returns a new instance of a "IPC::PerlSSH" object which uses the
+    STDIN/STDOUT streams of a command it executes, as the streams to
+    communicate with the remote perl.
 
-         SshPath => $path
+    Command => ARRAY
+            Specifies the command to execute
 
-    *   Running a specified command, connecting to its standard input and
-        output.
-
-         Command => $command
-
-        Or
-
-         Command => [ $command, @args ]
-
-    *   Using a given pair of functions as read and write operators.
-
-         Readfunc => \&read, Writefunc => \&write
-
-        Usually this form won't be used in practice; it largely exists to
-        assist the test scripts. But since it works, it is included in the
-        interface in case the earlier alternatives are not suitable.
-
-        The functions are called as
-
-         read( my $buffer, $len );
-
-         write( $buffer );
-
-        In each case, the returned value should be the number of bytes read
-        or written.
+    Command => STRING
+            Shorthand form for executing a single simple path
 
     The "Command" key can be used to create an "IPC::PerlSSH" running perl
     directly on the local machine, for example; so that the "remote" perl is
@@ -129,6 +117,30 @@ FUNCTIONS
 
      my $ips = IPC::PerlSSH->new( Command => $^X );
 
+  $ips = IPC::PerlSSH->new( Readh => $rd, Writeh => $wr )
+    Returns a new instance of a "IPC::PerlSSH" object using a given pair of
+    filehandles to read from and write to the remote perl process. It is
+    allowable for both filehandles to be the same - for example using a
+    socket.
+
+  $ips = IPC::PerlSSH->new( Readfunc => \&read, Writefunc => \&write )
+    Returns a new instance of a "IPC::PerlSSH" object using a given pair of
+    functions as read and write operators.
+
+    Usually this form won't be used in practice; it largely exists to assist
+    the test scripts. But since it works, it is included in the interface in
+    case the earlier alternatives are not suitable.
+
+    The functions are called as
+
+     $len = $Readfunc->( my $buffer, $maxlen );
+
+     $len = $Writewrite->( $buffer );
+
+    In each case, the returned value should be the number of bytes read or
+    written.
+
+METHODS
   @result = $ips->eval( $code, @args )
     This method evaluates code in the remote host, passing arguments and
     returning the result.
@@ -139,7 +151,8 @@ FUNCTIONS
     returned.
 
     If the remote code threw an exception, then this function propagates it
-    as a plain string.
+    as a plain string. If the remote process exits before responding, this
+    will be propagated as an exception.
 
   $ips->store( $name, $code )
   $ips->store( %funcs )
@@ -164,7 +177,8 @@ FUNCTIONS
     is returned in the same way as with the "eval" method.
 
     If an exception occurs during execution, it is propagated and thrown by
-    this method.
+    this method. If the remote process exits before responding, this will be
+    propagated as an exception.
 
   $ips->use_library( $library, @funcs )
     This method loads a library of code from a module, and stores them to

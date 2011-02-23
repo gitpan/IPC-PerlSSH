@@ -5,6 +5,8 @@ use strict;
 use Test::More tests => 10;
 use Test::Fatal;
 
+use IPC::Open2;
+
 use IPC::PerlSSH;
 
 $SIG{ALRM} = sub {
@@ -13,7 +15,9 @@ $SIG{ALRM} = sub {
 
 alarm( 5 );
 
-my $ips = IPC::PerlSSH->new( Command => "$^X" );
+open2( my $readpipe, my $writepipe, $^X ) or die "Cannot open2 $^X - $!";
+
+my $ips = IPC::PerlSSH->new( Readh => $readpipe, Writeh => $writepipe );
 ok( defined $ips, "Constructor" );
 
 alarm( 5 );

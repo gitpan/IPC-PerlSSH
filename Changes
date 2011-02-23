@@ -1,5 +1,12 @@
 Revision history for IPC-PerlSSH
 
+0.15    CHANGES:
+         * Added Library::FS::remove, mkpath, rmtree
+         * Added 'Port' and 'SshOptions' constructor arguments
+         * Added 'Readh'+'Writeh' constructor form
+         * Use Test::Fatal instead of Test::Exception
+         * Various documentation updates
+
 0.14    CHANGES:
          * Provide STDERR-capturing versions of Library::Run functions
            (fixes https://rt.cpan.org/Ticket/Display.html?id=49440)

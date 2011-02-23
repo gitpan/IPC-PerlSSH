@@ -1,7 +1,7 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2006-2009 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2006-2011 -- leonerd@leonerd.org.uk
 
 package IPC::PerlSSH::Base;
 
@@ -10,7 +10,7 @@ use warnings;
 
 use Carp;
 
-our $VERSION = '0.14';
+our $VERSION = '0.15';
 
 =head1 NAME
 
@@ -184,7 +184,13 @@ sub build_command
 
       defined $opts{User} and $host = "$opts{User}\@$host";
 
-      @command = ( $opts{SshPath} || "ssh", $host, $opts{Perl} || "perl" );
+      my @options;
+
+      push @options, "-p", $opts{Port} if defined $opts{Port};
+
+      push @options, @{ $opts{SshOptions} } if defined $opts{SshOptions};
+
+      @command = ( $opts{SshPath} || "ssh", @options, $host, $opts{Perl} || "perl" );
    }
 
    return @command;
@@ -306,11 +312,10 @@ sub _has_stored_code
    return 0;
 }
 
-# Keep perl happy; keep Britain tidy
-1;
-
 =head1 AUTHOR
 
 Paul Evans <leonerd@leonerd.org.uk>
 
 =cut
+
+0x55AA;

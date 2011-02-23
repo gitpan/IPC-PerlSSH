@@ -1,7 +1,7 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2006-2009 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2006-2011 -- leonerd@leonerd.org.uk
 
 package IPC::PerlSSH;
 
@@ -14,7 +14,7 @@ use IPC::Open2;
 
 use Carp;
 
-our $VERSION = '0.14';
+our $VERSION = '0.15';
 
 =head1 NAME
 
@@ -110,63 +110,59 @@ To work with remote IO handles, see the L<IPC::PerlSSH::Library::IO> module.
 
 =cut
 
-=head1 FUNCTIONS
+=head1 CONSTRUCTORS
 
 =cut
 
-=head2 $ips = IPC::PerlSSH->new( @args )
+=head2 $ips = IPC::PerlSSH->new( Host => $host, ... )
 
-This function returns a new instance of a C<IPC::PerlSSH> object. The
-connection can be specified in one of three ways, given in the C<@args> list:
+Returns a new instance of a C<IPC::PerlSSH> object connected to the specified
+host. The following arguments can be specified:
 
-=over 4
+=over 8
 
-=item *
+=item Host => STRING
 
-Connecting to a named host.
+Connect to a named host.
 
- Host => $hostname
+=item Port => INT
 
-Optionally passing in the path to the perl binary in the remote host
+Optionally specify a non-default port.
 
- Perl => $perl
+=item Perl => STRING
 
-Optionally passing in an alternative username
+Optionally pass in the path to the perl binary in the remote host.
 
- User => $user
+=item User => STRING
 
-Optionally specifying a different path to the F<ssh> binary
+Optionally pass in an alternative username
 
- SshPath => $path
+=item SshPath => STRING
 
-=item *
+Optionally specify a different path to the F<ssh> binary
 
-Running a specified command, connecting to its standard input and output.
+=item SshOptions => ARRAY
 
- Command => $command
+Optionally specify any other options to pass to the F<ssh> binary, in an
+C<ARRAY> reference
 
-Or
+=back
 
- Command => [ $command, @args ]
+=head2 $ips = IPC::PerlSSH->new( Command => \@command, ... )
 
-=item *
+Returns a new instance of a C<IPC::PerlSSH> object which uses the STDIN/STDOUT
+streams of a command it executes, as the streams to communicate with the
+remote F<perl>.
 
-Using a given pair of functions as read and write operators.
+=over 8
 
- Readfunc => \&read, Writefunc => \&write
+=item Command => ARRAY
 
-Usually this form won't be used in practice; it largely exists to assist the
-test scripts. But since it works, it is included in the interface in case the
-earlier alternatives are not suitable.
+Specifies the command to execute
 
-The functions are called as
+=item Command => STRING
 
- read( my $buffer, $len );
-
- write( $buffer );
-
-In each case, the returned value should be the number of bytes read or
-written.
+Shorthand form for executing a single simple path
 
 =back
 
@@ -175,6 +171,30 @@ directly on the local machine, for example; so that the "remote" perl is in
 fact running locally, but still in its own process.
 
  my $ips = IPC::PerlSSH->new( Command => $^X );
+
+=head2 $ips = IPC::PerlSSH->new( Readh => $rd, Writeh => $wr )
+
+Returns a new instance of a C<IPC::PerlSSH> object using a given pair of
+filehandles to read from and write to the remote F<perl> process. It is
+allowable for both filehandles to be the same - for example using a socket.
+
+=head2 $ips = IPC::PerlSSH->new( Readfunc => \&read, Writefunc => \&write )
+
+Returns a new instance of a C<IPC::PerlSSH> object using a given pair of
+functions as read and write operators.
+
+Usually this form won't be used in practice; it largely exists to assist the
+test scripts. But since it works, it is included in the interface in case the
+earlier alternatives are not suitable.
+
+The functions are called as
+
+ $len = $Readfunc->( my $buffer, $maxlen );
+
+ $len = $Writewrite->( $buffer );
+
+In each case, the returned value should be the number of bytes read or
+written.
 
 =cut
 
@@ -193,17 +213,19 @@ sub new
    my $pid = $opts{Pid};
 
    if( !defined $readfunc || !defined $writefunc ) {
-      my @command = $self->build_command( %opts );
+      my ( $readh, $writeh ) = ( $opts{Readh}, $opts{Writeh} );
 
-      my ( $readpipe, $writepipe );
-      $pid = open2( $readpipe, $writepipe, @command );
+      if( !defined $readh || !defined $writeh ) {
+         my @command = $self->build_command( %opts );
+         $pid = open2( $readh, $writeh, @command );
+      }
 
       $readfunc = sub {
-         sysread( $readpipe, $_[0], $_[1] );
+         sysread( $readh, $_[0], $_[1] );
       };
 
       $writefunc = sub {
-         syswrite( $writepipe, $_[0] );
+         syswrite( $writeh, $_[0] );
       };
    }
 
@@ -232,13 +254,17 @@ sub read_message
 
    while( !defined $message ) {
       my $b;
-      $self->{readfunc}->( $b, 8192 ) or die "Readfunc failed - $!";
+      $self->{readfunc}->( $b, 8192 ) or return ( "CLOSED" );
       $self->{readbuff} .= $b;
       ( $message, @args ) = $self->parse_message( $self->{readbuff} );
    }
 
    return ( $message, @args );
 }
+
+=head1 METHODS
+
+=cut
 
 =head2 @result = $ips->eval( $code, @args )
 
@@ -250,7 +276,8 @@ C<eval> in the remote host, in list context. If this method is called in
 scalar context, then only the first element of the returned list is returned.
 
 If the remote code threw an exception, then this function propagates it as a
-plain string.
+plain string. If the remote process exits before responding, this will be
+propagated as an exception.
 
 =cut
 
@@ -274,6 +301,9 @@ sub eval
          $message .= " ==> " . (split m/\n/, $code)[$1 - 1] . "\n";
       }
       die "Remote host threw an exception:\n$message";
+   }
+   elsif( $ret eq "CLOSED" ) {
+      die "Remote connection closed\n";
    }
    else {
       die "Unknown return result $ret\n";
@@ -321,6 +351,9 @@ sub store
       }
       die "Remote host threw an exception:\n$message";
    }
+   elsif( $ret eq "CLOSED" ) {
+      die "Remote connection closed\n";
+   }
    else {
       die "Unknown return result $ret\n";
    }
@@ -362,7 +395,8 @@ C<store> or C<bind> methods. The arguments are passed and the result is
 returned in the same way as with the C<eval> method.
 
 If an exception occurs during execution, it is propagated and thrown by this
-method.
+method. If the remote process exits before responding, this will be propagated
+as an exception.
 
 =cut
 
@@ -384,6 +418,9 @@ sub call
    }
    elsif( $ret eq "DIED" ) {
       die "Remote host threw an exception:\n$retargs[0]";
+   }
+   elsif( $ret eq "CLOSED" ) {
+      die "Remote connection closed\n";
    }
    else {
       die "Unknown return result $ret\n";
@@ -424,6 +461,9 @@ sub use_library
    elsif( $ret eq "DIED" ) {
       die "Remote host threw an exception:\n$retargs[0]";
    }
+   elsif( $ret eq "CLOSED" ) {
+      die "Remote connection closed\n";
+   }
    else {
       die "Unknown return result $ret\n";
    }
@@ -442,11 +482,10 @@ sub DESTROY
    waitpid $self->{pid}, 0 if defined $self->{pid};
 }
 
-# Keep perl happy; keep Britain tidy
-1;
-
 =head1 AUTHOR
 
 Paul Evans <leonerd@leonerd.org.uk>
 
 =cut
+
+0x55AA;

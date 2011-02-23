@@ -1,7 +1,7 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2008,2009 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2008-2011 -- leonerd@leonerd.org.uk
 
 package IPC::PerlSSH::Library::FS;
 
@@ -10,7 +10,7 @@ use warnings;
 
 use IPC::PerlSSH::Library;
 
-our $VERSION = '0.14';
+our $VERSION = '0.15';
 
 =head1 NAME
 
@@ -55,7 +55,17 @@ otherwise C<$!> would be difficult to obtain.
 
  chown chmod lstat mkdir readlink rename rmdir stat symlink unlink utime
 
+The following functions are imported from L<File::Path> with the following
+API adjustments:
+
+ mkpath( $path, %opts ) # %opts supports mode, user, group
+ rmtree( $path, %opts ) # %opts supports safe, keep_root
+
 =cut
+
+init q{
+   use File::Path qw( mkpath rmtree );
+};
 
 func chown =>
    q{my $uid = shift; my $gid = shift;
@@ -71,6 +81,10 @@ func lstat =>
 func mkdir =>
    q{mkdir $_[0] or die "Cannot mkdir('$_[0]') - $!"};
 
+func mkpath =>
+   q{my ( $path, %opts ) = @_;
+     mkpath $path, \%opts or die "Cannot mkpath('$path') - $!"};
+
 func readlink =>
    q{my $l = readlink $_[0]; defined $l or die "Cannot readlink('$_[0]') - $!"; $l};
 
@@ -79,6 +93,10 @@ func rename =>
 
 func rmdir =>
    q{rmdir $_[0] or die "Cannot rmdir('$_[0]') - $!"};
+
+func rmtree =>
+   q{my ( $path, %opts ) = @_;
+     rmtree $path, \%opts or die "Cannot rmtree('$_[0]') - $!"};
 
 func stat =>
    q{my @s = stat $_[0]; @s or die "Cannot stat('$_[0]') - $!"; @s};
@@ -199,6 +217,17 @@ func readdir =>
      my @ents = readdir( $dirh );
      grep { $_[1] ? $_ !~ m/^\.\.?$/ : $_ !~ m/^\./ } @ents};
 
+=pod
+
+ $ips->call( "remove", $path );
+
+Calls C<rmdir> if C<$path> is a directory, or C<unlink> if not
+
+=cut
+
+func remove =>
+   q{(lstat $_[0] && -d _) ? rmdir $_[0] : unlink $_[0] or die "Cannot remove('$_[0]') - $!"};
+
 =head2 New Functions
 
 The following functions are newly defined to wrap common perl idoms
@@ -219,11 +248,10 @@ func writefile =>
    q{open( my $fileh, ">", $_[0] ) or die "Cannot open('$_[0]') for writing - $!";
      print $fileh $_[1] or die "Cannot print to '$_[0]' - $!"};
 
-# Keep perl happy; keep Britain tidy
-1;
-
 =head1 AUTHOR
 
 Paul Evans <leonerd@leonerd.org.uk>
 
 =cut
+
+0x55AA;

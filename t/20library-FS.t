@@ -2,7 +2,7 @@
 
 use strict;
 
-use Test::More tests => 15;
+use Test::More tests => 17;
 use File::Temp qw( tempdir );
 
 use IPC::PerlSSH;
@@ -68,3 +68,9 @@ ok( !-l "$dir/link", 'remote unlink' );
 
 $ips->call( "rmdir", "$dir/dir" );
 ok( !-d "$dir/dir", 'remote rmdir' );
+
+$ips->call( "mkpath", "$dir/a/b/c" );
+ok( -d "$dir/a/b/c", 'remote mkpath' );
+
+$ips->call( "rmtree", "$dir/a" );
+ok( !-d "$dir/a", 'remote rmtree' );
