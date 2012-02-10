@@ -2,7 +2,7 @@
 
 use strict;
 
-use Test::More tests => 10;
+use Test::More tests => 12;
 use Test::Fatal;
 
 use IPC::Open2;
@@ -67,6 +67,12 @@ is( $total, 3, "Copes with nondefault \$/" );
 # Storing a second time should fail
 ok( exception { $ips->store( 'add', 'return 0' ) },
     "Storing a second time fails" );
+
+alarm( 5 );
+
+# Test that undef is representable
+ok( !$ips->eval( 'defined $_[0]', undef ), 'Can send undef' );
+ok( !defined $ips->eval( 'return undef' ), 'Can return undef' );
 
 # Test with an arrayref for Command
 $ips = IPC::PerlSSH->new( Command => [ "perl", "-w" ] );

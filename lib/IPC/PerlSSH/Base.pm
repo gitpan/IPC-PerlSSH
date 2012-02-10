@@ -1,7 +1,7 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2006-2011 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2006-2012 -- leonerd@leonerd.org.uk
 
 package IPC::PerlSSH::Base;
 
@@ -10,7 +10,7 @@ use warnings;
 
 use Carp;
 
-our $VERSION = '0.15';
+our $VERSION = '0.16';
 
 =head1 NAME
 
@@ -28,25 +28,38 @@ using this as a base class.
 
 =cut
 
-# And now for the main loop of the remote firmware
-my $REMOTE_PERL = <<'EOP';
-$| = 1;
-
-sub send_message
+# Some functions we'll share with the remote
+my $SHARE_PERL = <<'EOP';
+sub pack_message
 {
    my ( $message, @args ) = @_;
 
-   my $buffer = "";
-
-   $buffer .= "$message\n";
+   my $buffer = "$message\n";
    $buffer .= scalar( @args ) . "\n";
 
    foreach my $arg ( @args ) {
-      $buffer .= length( $arg ) . "\n" . "$arg";
+      if( !defined $arg ) {
+         $buffer .= "U\n";
+      }
+      else {
+         $buffer .= length( $arg ) . "\n" . "$arg";
+      }
    }
 
-   print STDOUT $buffer;
-};
+   return $buffer;
+}
+
+EOP
+
+eval "$SHARE_PERL; 1" or die $@;
+
+# And now for the main loop of the remote firmware
+my $REMOTE_PERL = <<'EOP';
+sub send_message
+{
+   my ( $message, @args ) = @_;
+   print STDOUT pack_message( $message, @args );
+}
 
 sub read_message
 {
@@ -66,14 +79,19 @@ sub read_message
       defined $arglen or die "Expected length of argument\n";
       chomp $arglen;
 
-      my $arg = "";
-      while( $arglen ) {
-         my $n = read( STDIN, $arg, $arglen, length $arg );
-         die "read() returned $!\n" unless( defined $n );
-         $arglen -= $n;
+      if( $arglen eq "U" ) {
+         push @args, undef;
       }
+      else {
+         my $arg = "";
+         while( $arglen ) {
+            my $n = read( STDIN, $arg, $arglen, length $arg );
+            die "read() returned $!\n" unless( defined $n );
+            $arglen -= $n;
+         }
 
-      push @args, $arg;
+         push @args, $arg;
+      }
       $numargs--;
    }
 
@@ -172,25 +190,33 @@ sub build_command
 {
    my $self = shift;
    my %opts = @_;
+   return $self->build_command_from( \%opts );
+}
+
+sub build_command_from
+{
+   my $self = shift;
+   my ( $opts ) = @_;
 
    my @command;
-   if( exists $opts{Command} ) {
-      my $c = $opts{Command};
+   if( exists $opts->{Command} ) {
+      my $c = delete $opts->{Command};
       @command = ref($c) && UNIVERSAL::isa( $c, "ARRAY" ) ? @$c : ( "$c" );
    }
    else {
-      my $host = $opts{Host} or
+      my $host = delete $opts->{Host} or
          croak ref($self)." requires a Host, a Command or a Readfunc/Writefunc pair";
 
-      defined $opts{User} and $host = "$opts{User}\@$host";
+      defined $opts->{User} and $host = "$opts->{User}\@$host";
+      delete $opts->{User};
 
       my @options;
 
-      push @options, "-p", $opts{Port} if defined $opts{Port};
+      push @options, "-p", delete $opts->{Port} if defined $opts->{Port};
 
-      push @options, @{ $opts{SshOptions} } if defined $opts{SshOptions};
+      push @options, @{ delete $opts->{SshOptions} } if defined $opts->{SshOptions};
 
-      @command = ( $opts{SshPath} || "ssh", @options, $host, $opts{Perl} || "perl" );
+      @command = ( delete $opts->{SshPath} || "ssh", @options, $host, delete $opts->{Perl} || "perl" );
    }
 
    return @command;
@@ -202,9 +228,10 @@ sub send_firmware
 
    $self->write( <<EOF );
 use strict;
+\$| = 1;
+$SHARE_PERL
 
 $REMOTE_PERL
-
 __END__
 EOF
 }
@@ -222,11 +249,14 @@ sub parse_message
       $buffer =~ s/^(.*)\n// or return;
       my $arglen = $1;
 
-      length $buffer >= $arglen or return;
-
-      my $arg = substr( $buffer, 0, $arglen, "" );
-
-      push @args, $arg;
+      if( $arglen eq "U" ) {
+         push @args, undef;
+      }
+      else {
+         length $buffer >= $arglen or return;
+         my $arg = substr( $buffer, 0, $arglen, "" );
+         push @args, $arg;
+      }
       $numargs--;
    }
 
@@ -243,16 +273,7 @@ sub write_message
    my $self = shift;
    my ( $message, @args ) = @_;
 
-   my $buffer = "";
-
-   $buffer .= "$message\n";
-   $buffer .= scalar( @args ) . "\n";
-
-   foreach my $arg ( @args ) {
-      $buffer .= length( $arg ) . "\n" . "$arg";
-   }
-
-   $self->write( $buffer );
+   $self->write( pack_message( $message, @args ) );
 }
 
 sub load_library_pkg

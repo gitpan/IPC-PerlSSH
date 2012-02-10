@@ -1,5 +1,6 @@
 Build.PL
 Changes
+examples/get-uname
 lib/IPC/PerlSSH.pm
 lib/IPC/PerlSSH/Base.pm
 lib/IPC/PerlSSH/Library.pm
@@ -27,3 +28,4 @@ t/99pod.t
 t/Error.pm
 t/Math.pm
 t/Stash.pm
+META.json

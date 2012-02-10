@@ -1,7 +1,7 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2006-2011 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2006-2012 -- leonerd@leonerd.org.uk
 
 package IPC::PerlSSH;
 
@@ -14,7 +14,7 @@ use IPC::Open2;
 
 use Carp;
 
-our $VERSION = '0.15';
+our $VERSION = '0.16';
 
 =head1 NAME
 
@@ -208,15 +208,15 @@ sub new
       stored => {},
    }, $class;
 
-   my ( $readfunc, $writefunc ) = ( $opts{Readfunc}, $opts{Writefunc} );
+   my ( $readfunc, $writefunc ) = ( delete $opts{Readfunc}, delete $opts{Writefunc} );
 
-   my $pid = $opts{Pid};
+   my $pid = delete $opts{Pid};
 
    if( !defined $readfunc || !defined $writefunc ) {
-      my ( $readh, $writeh ) = ( $opts{Readh}, $opts{Writeh} );
+      my ( $readh, $writeh ) = ( delete $opts{Readh}, delete $opts{Writeh} );
 
       if( !defined $readh || !defined $writeh ) {
-         my @command = $self->build_command( %opts );
+         my @command = $self->build_command_from( \%opts );
          $pid = open2( $readh, $writeh, @command );
       }
 
@@ -228,6 +228,9 @@ sub new
          syswrite( $writeh, $_[0] );
       };
    }
+
+   keys %opts and
+      croak "Unexpected ->new keys - " . join ", ", sort keys %opts;
 
    $self->{pid}       = $pid;
    $self->{readfunc}  = $readfunc;

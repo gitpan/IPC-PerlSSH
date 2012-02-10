@@ -1,5 +1,11 @@
 Revision history for IPC-PerlSSH
 
+0.16    CHANGES:
+         * Provide a nicer ->build_command_from() method in Base that deletes
+           hashref keys
+         * Allow arguments or return values to include undef
+         * Added a small example script
+
 0.15    CHANGES:
          * Added Library::FS::remove, mkpath, rmtree
          * Added 'Port' and 'SshOptions' constructor arguments

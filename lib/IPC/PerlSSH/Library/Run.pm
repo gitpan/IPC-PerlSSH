@@ -10,7 +10,7 @@ use warnings;
 
 use IPC::PerlSSH::Library;
 
-our $VERSION = '0.15';
+our $VERSION = '0.16';
 
 =head1 NAME
 
@@ -25,7 +25,7 @@ C<IPC::PerlSSH>
 
  $ips->use_library( "Run", qw( system system_out system_in ) );
 
- my ( $result, $out ) $ips->call( "system_out", qw( ip addr ls ) );
+ my ( $result, $out ) = $ips->call( "system_out", qw( ip addr ls ) );
  $out == 0 or die "ip failed\n";
 
  for (split m/\n/, $out ) {
